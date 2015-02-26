@@ -11,24 +11,6 @@ begin
 
 section {* Auxiliary lemmas *}
 
-lemma lborel_prod: "lborel \<Otimes>\<^sub>M lborel =
-    (lborel :: ('a::ordered_euclidean_space \<times> 'b::ordered_euclidean_space) measure)"
-proof (rule lborel_eqI[symmetric], clarify)
-  fix la ua :: 'a and lb ub :: 'b
-  assume lu: "\<And>a b. (a, b) \<in> Basis \<Longrightarrow> (la, lb) \<bullet> (a, b) \<le> (ua, ub) \<bullet> (a, b)"
-  have [simp]:
-    "\<And>b. b \<in> Basis \<Longrightarrow> la \<bullet> b \<le> ua \<bullet> b"
-    "\<And>b. b \<in> Basis \<Longrightarrow> lb \<bullet> b \<le> ub \<bullet> b"
-    "inj_on (\<lambda>u. (u, 0)) Basis" "inj_on (\<lambda>u. (0, u)) Basis"
-    "(\<lambda>u. (u, 0)) ` Basis \<inter> (\<lambda>u. (0, u)) ` Basis = {}"
-    "box (la, lb) (ua, ub) = box la ua \<times> box lb ub"
-    using lu[of _ 0] lu[of 0] by (auto intro!: inj_onI simp add: Basis_prod_def ball_Un box_def)
-  show "emeasure (lborel \<Otimes>\<^sub>M lborel) (box (la, lb) (ua, ub)) =
-      ereal (setprod (op \<bullet> ((ua, ub) - (la, lb))) Basis)"
-    by (simp add: lborel.emeasure_pair_measure_Times Basis_prod_def setprod.union_disjoint
-                  setprod.reindex)
-qed (simp add: borel_prod)
-
 lemma plus_emeasure':
   assumes "A \<in> sets M" "B \<in> sets M" "A \<inter> B \<in> null_sets M"
   shows "emeasure M A + emeasure M B = emeasure M (A \<union> B)"
@@ -72,15 +54,14 @@ proof-
   also let ?F = "\<lambda>x. x + sin x * cos x"
    {
     fix x A
-    from DERIV_add[OF DERIV_ident DERIV_mult[OF DERIV_sin DERIV_cos]]
-      have "(?F has_real_derivative 1 - (sin x)^2 + (cos x)^2) (at x)"
-          by (simp add: power2_eq_square field_simps)
+    have "(?F has_real_derivative 1 - (sin x)^2 + (cos x)^2) (at x)"
+      by (auto simp: power2_eq_square intro!: derivative_eq_intros)
     also have "1 - (sin x)^2 + (cos x)^2 = 2 * (cos x)^2" by (simp add: cos_squared_eq)
     finally have "(?F has_real_derivative 2 * (cos x)^2) (at x within A)" 
       by (rule DERIV_subset) simp
   }
   hence "LBINT x=-pi/2..pi/2. 2 * (cos x)^2 = ?F (pi/2) - ?F (-pi/2)"
-    by (intro interval_integral_FTC_finite)
+    by (intro interval_integral_FTC_finite) 
        (auto simp: has_field_derivative_iff_has_vector_derivative intro!: continuous_intros)
   also have "... = pi" by simp
   finally show ?thesis .
@@ -90,15 +71,17 @@ lemma unit_circle_area:
   "emeasure lborel {z::real\<times>real. norm z \<le> 1} = pi" (is "emeasure _ ?A = _")
 proof-
   let ?A1 = "{(x,y)\<in>?A. y \<ge> 0}" and ?A2 = "{(x,y)\<in>?A. y \<le> 0}"
-
+  have [measurable]: "(\<lambda>x. snd (x :: real \<times> real)) \<in> measurable borel borel"
+    by (simp add: borel_prod[symmetric])
+  
   have "?A1 = ?A \<inter> {x\<in>space lborel. snd x \<ge> 0}" by auto
-  also have "... \<in> sets borel"
-    by (intro sets.Int pred_Collect_borel) (simp_all add: borel_prod[symmetric])
+  also have "?A \<inter> {x\<in>space lborel. snd x \<ge> 0} \<in> sets borel"
+    by (intro sets.Int pred_Collect_borel) simp_all
   finally have A1_in_sets: "?A1 \<in> sets lborel" by (subst sets_lborel)
 
   have "?A2 = ?A \<inter> {x\<in>space lborel. snd x \<le> 0}" by auto
   also have "... \<in> sets borel" 
-    by (intro sets.Int pred_Collect_borel) (simp_all add: borel_prod[symmetric])
+    by (intro sets.Int pred_Collect_borel) simp_all
   finally have A2_in_sets: "?A2 \<in> sets lborel" by (subst sets_lborel)
 
   have A12: "?A = ?A1 \<union> ?A2" by auto
@@ -184,7 +167,8 @@ proof (cases "R = 0")
   with assms have R: "R > 0" by simp
   let ?A' = "{z::real\<times>real. norm z \<le> 1}"
   have "emeasure lborel ?A = \<integral>\<^sup>+x. \<integral>\<^sup>+y. indicator ?A (x,y) \<partial>lborel \<partial>lborel"
-    by (subst lborel_prod[symmetric], subst lborel.emeasure_pair_measure) (simp_all add: borel_prod)
+    by (subst lborel_prod[symmetric], subst lborel.emeasure_pair_measure, subst lborel_prod)
+       simp_all
   also have "... = \<integral>\<^sup>+x. R * \<integral>\<^sup>+y. indicator ?A (x,R*y) \<partial>lborel \<partial>lborel"
   proof (rule nn_integral_cong)
     fix x from R show "(\<integral>\<^sup>+y. indicator ?A (x,y) \<partial>lborel) = R * \<integral>\<^sup>+y. indicator ?A (x,R*y) \<partial>lborel"
@@ -205,7 +189,8 @@ proof (cases "R = 0")
                \<integral>\<^sup>+x. \<integral>\<^sup>+y. indicator ?A' (x,y) \<partial>lborel \<partial>lborel"
     by (intro nn_integral_cong) (simp split: split_indicator)
   also have "... = emeasure lborel ?A'"
-    by (subst lborel_prod[symmetric], subst lborel.emeasure_pair_measure) (simp_all add: borel_prod)
+    by (subst lborel_prod[symmetric], subst lborel.emeasure_pair_measure, subst lborel_prod) 
+       simp_all 
   also have "... = pi" by (rule unit_circle_area)
   finally show ?thesis by (simp add: power2_eq_square)
 qed simp
