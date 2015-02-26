@@ -24,9 +24,6 @@ proof-
   finally show ?thesis ..
 qed
 
-lemma density_1: "density M (\<lambda>_. 1) = M"
-  by (intro measure_eqI) (auto simp: emeasure_density)
-
 lemma real_sqrt_square:
   "x \<ge> 0 \<Longrightarrow> sqrt (x^2) = (x::real)" by simp
 
@@ -95,7 +92,6 @@ proof-
   also have "emeasure lborel ?A1 = \<integral>\<^sup>+x. \<integral>\<^sup>+y. indicator ?A1 (x,y) \<partial>lborel \<partial>lborel"
     by (subst lborel_prod[symmetric], subst lborel.emeasure_pair_measure) 
        (simp_all only: lborel_prod A1_in_sets)
-
   also have "emeasure lborel ?A2 = \<integral>\<^sup>+x. \<integral>\<^sup>+y. indicator ?A2 (x,y) \<partial>lborel \<partial>lborel"
     by (subst lborel_prod[symmetric], subst lborel.emeasure_pair_measure) 
        (simp_all only: lborel_prod A2_in_sets)
@@ -110,7 +106,6 @@ proof-
     done
   also have "... = \<integral>\<^sup>+x. \<integral>\<^sup>+y. indicator ?A1 (x,y) \<partial>lborel \<partial>lborel"
     by (intro nn_integral_cong) (auto split: split_indicator simp: norm_Pair)
-
   also have "... + ... = (1+1) * ..." by (subst ereal_left_distrib) simp_all
   also have "... = \<integral>\<^sup>+x. 2 * \<integral>\<^sup>+y. indicator ?A1 (x,y) \<partial>lborel \<partial>lborel"
     by (subst nn_integral_cmult) simp_all
